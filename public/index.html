@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeCore · Planeación de Rutas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f; --surface: #111318; --surface2: #181c23; --surface3: #1e2430;
+  --border: #252d3a; --accent: #00e5a0; --accent2: #0077ff; --accent3: #ff5c35;
+  --text: #e8eaf0; --muted: #5a6480; --warning: #f5a623; --purple: #a05aff;
+  --mono: 'Space Mono', monospace; --sans: 'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+/* ── Login Screen ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+#login-screen.hidden { display: none; }
+.login-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 380px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+.login-logo {
+  font-family: var(--mono); font-size: 13px; letter-spacing: .15em;
+  color: var(--accent); display: flex; align-items: center; gap: 10px;
+}
+.login-logo-dot {
+  width: 8px; height: 8px; background: var(--accent);
+  border-radius: 50%; animation: pulse 2s infinite;
+}
+.login-title { font-size: 22px; font-weight: 800; }
+.login-subtitle { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.login-input {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 14px; color: var(--text);
+  font-family: var(--sans); font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.login-input:focus { border-color: var(--accent2); }
+.login-input::placeholder { color: var(--muted); }
+.login-btn {
+  background: var(--accent2); border: none; border-radius: 6px;
+  padding: 12px; color: white; font-family: var(--mono); font-size: 12px;
+  letter-spacing: .08em; cursor: pointer; transition: opacity .2s;
+}
+.login-btn:hover { opacity: .85; }
+.login-btn:disabled { opacity: .5; cursor: not-allowed; }
+.login-error {
+  font-family: var(--mono); font-size: 11px; color: var(--accent3);
+  background: rgba(255,92,53,.08); border: 1px solid rgba(255,92,53,.2);
+  border-radius: 5px; padding: 8px 12px; display: none;
+}
+.login-error.show { display: block; }
+.login-erp { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: center; }
+
+/* ── User badge in header ── */
+.user-badge {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.user-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.logout-btn {
+  font-family: var(--mono); font-size: 10px; padding: 4px 8px;
+  border-radius: 3px; border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; background: transparent; transition: all .2s;
+}
+.logout-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+/* Header */
+header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; background: rgba(10,12,15,.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.logo { font-family: var(--mono); font-size: 12px; letter-spacing: .15em; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+.logo-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.badge { background: rgba(245,166,35,.12); color: var(--warning); border: 1px solid rgba(245,166,35,.25); padding: 3px 8px; border-radius: 3px; font-family: var(--mono); font-size: 10px; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 1fr 360px; height: calc(100vh - 52px); }
+.left { display: flex; flex-direction: column; border-right: 1px solid var(--border); min-height: 0; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 1px; background: var(--border); flex-shrink: 0; }
+.kpi { background: var(--surface); padding: 14px 18px; border-top: 2px solid transparent; }
+.kpi.k-green { border-top-color: var(--accent); }
+.kpi.k-blue { border-top-color: var(--accent2); }
+.kpi.k-orange { border-top-color: var(--warning); }
+.kpi.k-purple { border-top-color: var(--purple); }
+.kpi.k-red { border-top-color: var(--accent3); }
+.kpi-label { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.kpi-val { font-size: 26px; font-weight: 800; line-height: 1; }
+.kpi.k-green .kpi-val { color: var(--accent); }
+.kpi.k-blue .kpi-val { color: var(--accent2); }
+.kpi.k-orange .kpi-val { color: var(--warning); }
+.kpi.k-purple .kpi-val { color: var(--purple); }
+.kpi.k-red .kpi-val { color: var(--accent3); }
+.kpi-sub { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.btn { font-family: var(--mono); font-size: 10px; padding: 7px 13px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; background: transparent; transition: all .2s; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent2); border-color: var(--accent2); color: white; }
+.btn-primary:hover { opacity: .85; }
+.filter-box { font-family: var(--mono); font-size: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 4px; outline: none; width: 160px; }
+.filter-box:focus { border-color: var(--accent2); }
+.filter-box::placeholder { color: var(--muted); }
+.ml { margin-left: auto; }
+
+/* Scroll area */
+.scroll { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.scroll::-webkit-scrollbar { width: 4px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Group card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; animation: fadeIn .2s ease; }
+.card.drag-over { border-color: var(--accent2); }
+
+/* Card header */
+.card-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); user-select: none; }
+.card-hdr:hover { background: rgba(255,255,255,.02); }
+.c-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.c-info { flex: 1; min-width: 0; }
+.c-route { font-family: var(--mono); font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-route.no-route { color: var(--warning); }
+.c-zones { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.c-zone { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.c-arrow { color: var(--border); font-size: 10px; }
+.c-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.c-count { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.c-total { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 700; }
+.c-chevron { font-size: 10px; color: var(--muted); margin-left: 8px; flex-shrink: 0; transition: transform .2s; }
+.card.open .c-chevron { transform: rotate(180deg); }
+
+/* Card meta row — always visible */
+.card-meta { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+.meta-cell { background: var(--surface2); padding: 10px 14px; }
+.meta-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+.meta-val { font-size: 14px; font-weight: 700; color: var(--text); }
+.meta-val.v-green { color: var(--accent); }
+.meta-val.v-blue { color: var(--accent2); }
+.meta-val.v-orange { color: var(--warning); }
+.meta-val.v-red { color: var(--accent3); }
+
+/* Card body — toggled */
+.card-body { display: none; }
+.card.open .card-body { display: block; }
+
+/* Cost bar */
+.cost-bar { display: flex; align-items: center; gap: 14px; padding: 11px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.cost-item { display: flex; flex-direction: column; gap: 3px; }
+.cost-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.cost-val { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+.cost-divider { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+.cost-total .cost-val { color: var(--accent); font-size: 15px; }
+.counter { display: flex; align-items: center; gap: 5px; }
+.cnt-btn { width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all .15s; }
+.cnt-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cnt-val { font-family: var(--mono); font-size: 11px; min-width: 16px; text-align: center; }
+.v-select { font-family: var(--mono); font-size: 10px; background: var(--surface3); border: 1px solid var(--border); color: var(--text); padding: 4px 7px; border-radius: 3px; cursor: pointer; outline: none; max-width: 220px; }
+.v-select:focus { border-color: var(--accent2); }
+
+/* Warning */
+.card-warn { padding: 9px 16px; font-family: var(--mono); font-size: 10px; color: var(--warning); display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
+
+/* Arrangement list */
+.arr-list { padding: 8px; display: flex; flex-direction: column; gap: 3px; max-height: 280px; overflow-y: auto; }
+.arr-list::-webkit-scrollbar { width: 3px; }
+.arr-list::-webkit-scrollbar-thumb { background: var(--border); }
+.arr-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; cursor: grab; transition: all .15s; }
+.arr-item:hover { background: var(--surface2); border-color: var(--surface3); }
+.arr-item.dragging { opacity: .3; }
+.arr-item.late { border-color: rgba(255,92,53,.35); }
+.ai-id { font-family: var(--mono); font-size: 10px; color: var(--accent2); min-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 2px; text-transform: uppercase; flex-shrink: 0; }
+.ai-badge.mr { background: rgba(0,119,255,.12); color: var(--accent2); }
+.ai-badge.b2b { background: rgba(0,229,160,.12); color: var(--accent); }
+.ai-name { flex: 1; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-m3 { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; min-width: 60px; text-align: right; }
+.ai-date { font-family: var(--mono); font-size: 10px; flex-shrink: 0; min-width: 80px; text-align: right; color: var(--muted); }
+.ai-date.late { color: var(--accent3); }
+
+/* Empty state */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--muted); font-family: var(--mono); font-size: 12px; gap: 12px; flex: 1; text-align: center; }
+
+/* Chat */
+.chat { display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+.chat-hdr { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.chat-icon { width: 26px; height: 26px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.chat-hdr h2 { font-size: 12px; font-weight: 700; }
+.chat-hdr p { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+.messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); }
+.msg { display: flex; flex-direction: column; gap: 3px; animation: fadeIn .25s ease; }
+.msg.user { align-items: flex-end; }
+.msg.assistant { align-items: flex-start; }
+.bubble { max-width: 94%; padding: 9px 12px; border-radius: 7px; font-size: 12px; line-height: 1.6; }
+.msg.user .bubble { background: rgba(0,119,255,.18); border: 1px solid rgba(0,119,255,.25); }
+.msg.assistant .bubble { background: var(--surface2); border: 1px solid var(--border); }
+.msg-time { font-family: var(--mono); font-size: 9px; color: var(--muted); padding: 0 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chip { font-family: var(--mono); font-size: 9px; padding: 4px 9px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; background: transparent; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chat-input { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; gap: 7px; background: var(--bg); flex-shrink: 0; }
+#msg-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 8px 11px; color: var(--text); font-family: var(--sans); font-size: 12px; outline: none; resize: none; transition: border-color .2s; }
+#msg-input:focus { border-color: var(--accent2); }
+#msg-input::placeholder { color: var(--muted); }
+#send-btn { background: var(--accent2); border: none; border-radius: 5px; width: 34px; height: 34px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-end; transition: opacity .2s; }
+#send-btn:hover { opacity: .85; }
+#send-btn:disabled { opacity: .4; cursor: not-allowed; }
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite; }
+</style>
+</head>
+<body>
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><div class="login-logo-dot"></div>ZECORE · LOGISTICS</div>
+    <div>
+      <div class="login-title">Iniciar sesión</div>
+      <div class="login-subtitle">Ingresa tus credenciales de ERPNext</div>
+    </div>
+    <div class="login-field">
+      <label class="login-label">Usuario ERPNext</label>
+      <input class="login-input" id="login-usr" type="email" placeholder="usuario@empresa.com"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:4px 0">
+      Ingresa tu correo registrado en ERPNext
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">ENTRAR</button>
+    <div class="login-erp" id="login-erp-url"></div>
+  </div>
+</div>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>ZECORE · PLANEACIÓN DE RUTAS</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="badge">DEMO · DATOS ESTÁTICOS</span>
+    <div class="user-badge" id="user-badge" style="display:none">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span id="user-name"></span>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="hdr-info"></span>
+  </div>
+</header>
+
+<div class="app">
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi k-green"><div class="kpi-label">Grupos</div><div class="kpi-val" id="k-g">—</div><div class="kpi-sub" id="k-gs">—</div></div>
+      <div class="kpi k-blue"><div class="kpi-label">Arrangements</div><div class="kpi-val" id="k-a">—</div><div class="kpi-sub" id="k-as">—</div></div>
+      <div class="kpi k-orange"><div class="kpi-label">Vol. Total</div><div class="kpi-val" id="k-m">—</div><div class="kpi-sub">m³</div></div>
+      <div class="kpi k-purple"><div class="kpi-label">Costo Est.</div><div class="kpi-val" id="k-c">—</div><div class="kpi-sub">MXN</div></div>
+      <div class="kpi k-red"><div class="kpi-label">Sin Ruta</div><div class="kpi-val" id="k-nr">—</div><div class="kpi-sub">sin cobertura</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="btn btn-primary" id="gen-btn" onclick="buildPlan()">▶ GENERAR PLAN</button>
+      <input class="filter-box" id="filter-box" placeholder="Filtrar grupos..." oninput="applyFilter()">
+      <button class="btn ml" onclick="openAll()">EXPANDIR TODO</button>
+      <button class="btn" onclick="closeAll()">COLAPSAR</button>
+      <button class="btn" onclick="exportCSV()" style="border-color:rgba(0,229,160,.3);color:var(--accent)" title="Exportar planeación a CSV">↓ EXPORTAR CSV</button>
+    </div>
+
+    <!-- Cards area -->
+    <div class="scroll" id="scroll-area">
+      <div class="empty">
+        <span style="font-size:24px">📦</span>
+        <strong>Presiona GENERAR PLAN</strong>
+        <span id="init-info" style="font-size:10px;opacity:.5"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: Chat -->
+  <div class="chat">
+    <div class="chat-hdr">
+      <div class="chat-icon">✦</div>
+      <div><h2>Asistente de Rutas</h2><p>Análisis con datos reales de ERPNext</p></div>
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg assistant">
+        <div class="bubble">Hola 👋 Tengo cargados los datos de tu ERPNext.<br>Presiona <strong>GENERAR PLAN</strong> y te ayudo a analizar grupos, costos y optimizaciones.</div>
+        <span class="msg-time"></span>
+      </div>
+    </div>
+    <div class="chips">
+      <button class="chip" onclick="ask('Dame un resumen del plan: grupos, costos y alertas principales')">Resumen</button>
+      <button class="chip" onclick="ask('¿Cuál es el grupo con mayor costo y cómo optimizarlo?')">Mayor costo</button>
+      <button class="chip" onclick="ask('¿Qué grupos no tienen ruta o tarifa?')">Sin cobertura</button>
+      <button class="chip" onclick="ask('¿Qué arrangements tienen ETD más urgente?')">Urgentes</button>
+      <button class="chip" onclick="ask('Sugiere cómo reorganizar para reducir el costo total')">Optimizar</button>
+    </div>
+    <div class="chat-input">
+      <textarea id="msg-input" placeholder="Pregunta sobre rutas, costos, agrupamientos..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
+      <button id="send-btn" onclick="sendMsg()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Global data store (populated on GENERAR PLAN) ────────────
+var ERP_DATA = { arrangements: [], routes: [], rates: [], handling: [], pcZoneMap: {} };
+
+// ── Auth ─────────────────────────────────────────────────────
+const PROXY = 'http://localhost:3001';
+var SESSION = { token: null, user: null, fullName: null };
+
+function doLogin() {
+  var usr = document.getElementById('login-usr').value.trim();
+  var btn = document.getElementById('login-btn');
+  var err = document.getElementById('login-error');
+
+  if (!usr) {
+    showLoginError('Ingresa tu usuario de ERPNext');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'VERIFICANDO...';
+  err.classList.remove('show');
+
+  fetch(PROXY + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usr: usr })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      SESSION.token    = d.token;
+      SESSION.user     = d.user;
+      SESSION.fullName = d.fullName;
+      sessionStorage.setItem('zc_token',    d.token);
+      sessionStorage.setItem('zc_user',     d.user);
+      sessionStorage.setItem('zc_fullname', d.fullName);
+      showDashboard();
+    } else {
+      showLoginError(d.error || 'Credenciales incorrectas');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+    }
+  })
+  .catch(function(e) {
+    showLoginError('No se pudo conectar al servidor. ¿Está corriendo npm start?');
+    btn.disabled = false;
+    btn.textContent = 'ENTRAR';
+  });
+}
+
+function showLoginError(msg) {
+  var err = document.getElementById('login-error');
+  err.textContent = msg;
+  err.classList.add('show');
+}
+
+function showDashboard() {
+  document.getElementById('login-screen').classList.add('hidden');
+  var badge  = document.getElementById('user-badge');
+  var avatar = document.getElementById('user-avatar');
+  var name   = document.getElementById('user-name');
+  badge.style.display = 'flex';
+  name.textContent    = SESSION.fullName || SESSION.user;
+  avatar.textContent  = (SESSION.fullName || SESSION.user).charAt(0).toUpperCase();
+
+}
+
+function doLogout() {
+  fetch(PROXY + '/api/auth/logout', {
+    method: 'POST',
+    headers: { 'x-session-token': SESSION.token || '' }
+  }).catch(function(){});
+  SESSION = { token: null, user: null, fullName: null };
+  sessionStorage.removeItem('zc_token');
+  sessionStorage.removeItem('zc_user');
+  sessionStorage.removeItem('zc_fullname');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('user-badge').style.display = 'none';
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn').textContent = 'ENTRAR';
+  document.getElementById('login-error').classList.remove('show');
+}
+
+// Check existing session on load
+document.addEventListener('DOMContentLoaded', function() {
+  var token    = sessionStorage.getItem('zc_token');
+  var user     = sessionStorage.getItem('zc_user');
+  var fullName = sessionStorage.getItem('zc_fullname');
+  var erpUrl   = document.getElementById('login-erp-url');
+  if (erpUrl) erpUrl.textContent = 'ERP: ' + PROXY.replace('http://localhost:3001','') + 'zecore.develop.zebrands.mx';
+
+  if (token) {
+    fetch(PROXY + '/api/auth/validate', {
+      headers: { 'x-session-token': token }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        SESSION.token    = token;
+        SESSION.user     = d.user;
+        SESSION.fullName = d.fullName;
+        showDashboard();
+      }
+    })
+    .catch(function(){});
+  }
+});
+
+// ── Config ──────────────────────────────────────────────────
+const ANTHROPIC_KEY = 'TU_ANTHROPIC_API_KEY_AQUI';
+const MAX_CAP       = 0.80;
+const COLORS        = ['#00e5a0','#0077ff','#f5a623','#ff5c35','#a05aff','#00c8e5','#e5a000','#ff5599','#a0e500','#ff6600','#00ffe5','#aa00ff'];
+const HAND_CODES    = ['MX Reparto','MX Maniobra Boarding','MX Maniobra Boarding B2B'];
+
+// ── State ────────────────────────────────────────────────────
+const S = {
+  groups   : [],
+  open     : new Set(),
+  filter   : '',
+  chatHist : [],
+  aiLoading: false,
+  drag     : { name: null, fromIdx: null },
+};
+
+// ── Init ─────────────────────────────────────────────────────
+document.getElementById('init-info').textContent = 'Datos en tiempo real desde ERPNext';
+document.getElementById('hdr-info').textContent = 'Conectando...';
+
+// ── Build Plan ───────────────────────────────────────────────
+function buildPlan() {
+  const btn = document.getElementById('gen-btn');
+  btn.textContent = '⏳ CARGANDO...';
+  btn.disabled = true;
+
+  document.getElementById('scroll-area').innerHTML =
+    '<div class="empty"><div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div><span>Consultando ERPNext en tiempo real...</span></div>';
+
+  fetch(PROXY + '/api/logistics/arrangements', {
+    headers: SESSION.token ? { 'x-session-token': SESSION.token } : {}
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.ok) throw new Error(d.error || 'Error al cargar datos');
+
+    // Store data globally for use in grouping/rates logic
+    ERP_DATA.arrangements = d.arrangements || [];
+    ERP_DATA.routes       = d.routes       || [];
+    ERP_DATA.rates        = d.rates        || [];
+    ERP_DATA.handling     = d.handling     || [];
+
+    document.getElementById('hdr-info').textContent =
+      ERP_DATA.arrangements.length + ' arrangements · ' + new Date().toLocaleTimeString('es-MX');
+
+    // Group and plan
+    const rawGroups = makeGroups();
+    const MAX_VOL   = 20.0 * MAX_CAP; // 16 m3
+    let allGroups   = [];
+    for (const g of rawGroups) {
+      if (g.total_m3 > MAX_VOL) {
+        allGroups = allGroups.concat(partitionGroup(g, MAX_VOL));
+      } else {
+        allGroups.push(g);
+      }
+    }
+    S.groups = allGroups;
+    S.groups.forEach(function(g, i) {
+      g.idx     = i;
+      g.color   = COLORS[i % COLORS.length];
+      g.routes  = findRoutes(g);
+      g.avail   = findRates(g);
+      g.vehicle = pickVehicle(g.avail, g.total_m3);
+      g.costs   = calcCosts(g);
+      g.numM    = 0;
+    });
+    S.open.clear();
+    S.groups.slice(0, 5).forEach(function(g) { S.open.add(g.idx); });
+    updateKPIs();
+    renderAll();
+    autoMsg();
+  })
+  .catch(function(e) {
+    addMsg('assistant', '❌ Error: ' + e.message);
+    document.getElementById('scroll-area').innerHTML =
+      '<div class="empty" style="color:var(--accent3)">Error al cargar datos de ERPNext:<br>' + e.message + '</div>';
+    console.error(e);
+  })
+  .finally(function() {
+    btn.textContent = '▶ GENERAR PLAN';
+    btn.disabled = false;
+  });
+}
+
+// ── Grouping ─────────────────────────────────────────────────
+function makeGroups() {
+  const map   = {};
+  const pcMap = ERP_DATA.pcZoneMap || {};
+  const norm  = pc => (pc||'').trim().padStart(5,'0');
+
+  for (const a of ERP_DATA.arrangements) {
+    const oz = pcMap[norm(a.origin_pincode)] || ('CP-' + a.origin_pincode);
+    let dz = null;
+    for (const dp of (a.dest_pincodes || [])) {
+      const z = pcMap[norm(dp)];
+      if (z) { dz = z; break; }
+    }
+    if (!dz) dz = 'CP-' + ((a.dest_pincodes||[])[0]||'?');
+
+    const key = oz + '||' + dz;
+    if (!map[key]) {
+      map[key] = {
+        id: key, origin_zone: oz, dest_zone: dz,
+        origin_warehouse: a.origin_warehouse, origin_city: a.origin_city,
+        arrangements: [], dest_pcs: new Set(),
+        total_m3: 0, total_pallets: 0, numRepartos: 0,
+      };
+    }
+    const g = map[key];
+    g.arrangements.push(a);
+    g.total_m3      += a.total_m3 || 0;
+    g.total_pallets += a.total_pallets || 0;
+    (a.dest_pincodes||[]).forEach(dp => g.dest_pcs.add(dp));
+  }
+
+  return Object.values(map).map(g => ({
+    ...g,
+    total_m3     : Math.round(g.total_m3 * 100) / 100,
+    total_pallets: Math.round(g.total_pallets * 10) / 10,
+    dest_pcs     : Array.from(g.dest_pcs),
+    numRepartos  : Math.max(0, g.dest_pcs.size - 1),
+  })).sort((a,b) => b.total_m3 - a.total_m3);
+}
+
+// ── Partition group into multiple transports ─────────────────
+function partitionGroup(g, maxFill) {
+  // Sort: dest_pincode → ETD → volume
+  const sorted = [...g.arrangements].sort((a, b) => {
+    const dA = (a.dest_pincodes||[])[0] || 'ZZZ';
+    const dB = (b.dest_pincodes||[])[0] || 'ZZZ';
+    if (dA !== dB) return dA.localeCompare(dB);
+    const eA = a.etd || '9999';
+    const eB = b.etd || '9999';
+    if (eA !== eB) return eA.localeCompare(eB);
+    return (a.total_m3||0) - (b.total_m3||0);
+  });
+
+  const transports = [];
+  let current = null;
+
+  function newTransport(partNum) {
+    return {
+      id             : g.id + '__t' + partNum,
+      origin_zone    : g.origin_zone,
+      dest_zone      : g.dest_zone,
+      origin_warehouse: g.origin_warehouse,
+      origin_city    : g.origin_city,
+      arrangements   : [],
+      dest_pcs       : new Set(),
+      total_m3       : 0,
+      total_pallets  : 0,
+      numRepartos    : 0,
+      isPartition    : true,
+      partNum        : partNum,
+      parentId       : g.id,
+      totalParts     : null, // filled after
+    };
+  }
+
+  let partNum = 1;
+  current = newTransport(partNum);
+
+  for (const a of sorted) {
+    const vol = a.total_m3 || 0;
+
+    // If single arrangement exceeds limit, it goes alone
+    if (vol > maxFill) {
+      if (current.arrangements.length > 0) {
+        transports.push(current);
+        partNum++;
+        current = newTransport(partNum);
+      }
+      current.arrangements.push(a);
+      current.total_m3 += vol;
+      current.total_pallets += a.total_pallets || 0;
+      (a.dest_pincodes||[]).forEach(dp => current.dest_pcs.add(dp));
+      transports.push(current);
+      partNum++;
+      current = newTransport(partNum);
+      continue;
+    }
+
+    // If adding exceeds limit, close current and open new
+    if (current.arrangements.length > 0 && current.total_m3 + vol > maxFill) {
+      transports.push(current);
+      partNum++;
+      current = newTransport(partNum);
+    }
+
+    current.arrangements.push(a);
+    current.total_m3      += vol;
+    current.total_pallets += a.total_pallets || 0;
+    (a.dest_pincodes||[]).forEach(dp => current.dest_pcs.add(dp));
+  }
+
+  if (current.arrangements.length > 0) transports.push(current);
+
+  // Finalize
+  const totalParts = transports.length;
+  return transports.map(t => ({
+    ...t,
+    total_m3     : Math.round(t.total_m3 * 100) / 100,
+    total_pallets: Math.round(t.total_pallets * 10) / 10,
+    dest_pcs     : Array.from(t.dest_pcs),
+    numRepartos  : Math.max(0, t.dest_pcs.size - 1),
+    totalParts,
+  }));
+}
+
+function findRoutes(g) {
+  return ERP_DATA.routes.filter(r => r.origin_zone === g.origin_zone && r.dest_zone === g.dest_zone);
+}
+
+function findRates(g) {
+  if (!g.routes.length) return [];
+  const codes    = g.routes.map(r => r.route_code);
+  const carriers = [...new Set(g.arrangements.map(a => a.carrier).filter(Boolean))];
+  const pool     = ERP_DATA.rates;
+
+  let found = pool.filter(r => codes.includes(r.route_code) && carriers.includes(r.supplier));
+  if (!found.length) found = pool.filter(r => codes.includes(r.route_code) && !r.supplier);
+
+  const best = {};
+  for (const r of found) {
+    if (!best[r.vehicle_type] || r.rate < best[r.vehicle_type].rate) best[r.vehicle_type] = r;
+  }
+  return Object.values(best).sort((a,b) => a.capacity - b.capacity);
+}
+
+function pickVehicle(rates, m3) {
+  const min = m3 / MAX_CAP;
+  return rates.filter(r => r.capacity >= min).sort((a,b) => a.rate - b.rate)[0] || null;
+}
+
+function calcCosts(g) {
+  const v = g.vehicle;
+  if (!v) return null;
+  const hasMR = g.arrangements.some(a => a.purpose === 'Material Request');
+  const mCode = hasMR ? 'MX Maniobra Boarding' : 'MX Maniobra Boarding B2B';
+  const hand  = ERP_DATA.handling;
+  const mR = hand.find(h => h.route_code === mCode && h.vehicle_type === v.vehicle_type);
+  const rR = hand.find(h => h.route_code === 'MX Reparto' && h.vehicle_type === v.vehicle_type);
+  const flete    = v.rate || 0;
+  const maniobra = (mR?.rate||0) * (g.numM||0);
+  const reparto  = (rR?.rate||0) * (g.numRepartos||0);
+  return { flete, maniobra, reparto, total: flete+maniobra+reparto };
+}
+
+// ── KPIs ─────────────────────────────────────────────────────
+function updateKPIs() {
+  const gs   = S.groups;
+  const arrN = gs.reduce((s,g) => s + g.arrangements.length, 0);
+  const m3   = gs.reduce((s,g) => s + g.total_m3, 0);
+  const cost = gs.reduce((s,g) => s + (g.costs?.total||0), 0);
+  const nr   = gs.filter(g => !g.routes.length).length;
+  const mr   = gs.reduce((s,g) => s + g.arrangements.filter(a => a.purpose==='Material Request').length, 0);
+  const b2b  = gs.reduce((s,g) => s + g.arrangements.filter(a => a.purpose==='Sales Order').length, 0);
+
+  setText('k-g',  gs.length);
+  setText('k-gs', `${gs.filter(g=>g.origin_zone.startsWith('MX')).length} c/zona resuelta`);
+  setText('k-a',  arrN);
+  setText('k-as', `${mr} MR · ${b2b} B2B`);
+  setText('k-m',  m3.toFixed(1));
+  setText('k-c',  cost > 0 ? `$${(cost/1000).toFixed(0)}k` : '—');
+  setText('k-nr', nr);
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ── Render ───────────────────────────────────────────────────
+function applyFilter() {
+  S.filter = document.getElementById('filter-box').value.toLowerCase();
+  renderAll();
+}
+
+function renderAll() {
+  const area = document.getElementById('scroll-area');
+  area.innerHTML = '';
+
+  const list = S.filter
+    ? S.groups.filter(g =>
+        g.origin_zone?.toLowerCase().includes(S.filter) ||
+        g.dest_zone?.toLowerCase().includes(S.filter) ||
+        g.origin_warehouse?.toLowerCase().includes(S.filter) ||
+        g.routes?.some(r => r.route_code?.toLowerCase().includes(S.filter)) ||
+        g.arrangements.some(a => (a.name+a.customer).toLowerCase().includes(S.filter))
+      )
+    : S.groups;
+
+  if (!list.length) {
+    area.innerHTML = '<div class="empty"><span>Sin resultados para ese filtro</span></div>';
+    return;
+  }
+
+  for (const g of list) {
+    area.appendChild(makeCard(g));
+  }
+}
+
+// ── Build card using DOM API ──────────────────────────────────
+function makeCard(g) {
+  const isOpen = S.open.has(g.idx);
+  const costs  = g.costs;
+  const occ    = g.vehicle ? Math.round((g.total_m3/g.vehicle.capacity)*100) : null;
+
+  // Root
+  const card = el('div', 'card' + (isOpen ? ' open' : ''));
+  card.id = 'card-' + g.idx;
+
+  // Header
+  const hdr = el('div', 'card-hdr');
+  hdr.onclick = () => toggleCard(g.idx);
+
+  const dot = el('div', 'c-dot');
+  dot.style.background = g.color;
+
+  const routeCodes = g.routes.length
+    ? [...new Set(g.routes.map(r => r.route_code))].slice(0,2).join(' / ')
+    : 'Sin ruta catalogada';
+
+  const info = el('div', 'c-info');
+  const routeEl = el('div', 'c-route' + (g.routes.length ? '' : ' no-route'));
+  if (g.approved) {
+    // Already approved — show green checkmark badge, no action buttons
+    const pb = el('span', '');
+    pb.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(0,229,160,.12);color:var(--accent);border:1px solid rgba(0,229,160,.25);flex-shrink:0';
+    pb.textContent = '✓ TRANSPORTE ' + g.partNum + '/' + g.totalParts;
+    routeEl.innerHTML = '';
+    const rtxt = el('span',''); rtxt.textContent = routeCodes;
+    routeEl.append(rtxt, pb);
+  } else if (g.wasPartitioned) {
+    // Rejected — show orange warning badge
+    const pb = el('span', '');
+    pb.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(245,166,35,.12);color:var(--warning);border:1px solid rgba(245,166,35,.25);flex-shrink:0';
+    pb.textContent = '⚠ EXCEDE CAPACIDAD';
+    routeEl.innerHTML = '';
+    const rtxt = el('span',''); rtxt.textContent = routeCodes;
+    routeEl.append(rtxt, pb);
+  } else if (g.isPartition) {
+    routeEl.textContent = routeCodes + '  ·  Transporte ' + g.partNum + ' de ' + g.totalParts;
+    routeEl.style.display = 'flex';
+    routeEl.style.alignItems = 'center';
+    routeEl.style.gap = '8px';
+    // Add partition badge
+    const pb = el('span', '');
+    pb.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(160,90,255,.15);color:var(--purple);border:1px solid rgba(160,90,255,.3);flex-shrink:0';
+    pb.textContent = 'TRANSPORTE ' + g.partNum + '/' + g.totalParts;
+    routeEl.innerHTML = '';
+    const rtxt = el('span',''); rtxt.textContent = routeCodes;
+    routeEl.append(rtxt, pb);
+    // Approve/Reject buttons — only show on first partition of a group
+    if (g.partNum === 1) {
+      const actions = el('div','');
+      actions.style.cssText = 'display:flex;gap:5px;margin-left:8px';
+      const approveBtn = el('button','');
+      approveBtn.textContent = '✓ Aprobar';
+      approveBtn.title = 'Confirmar particionamiento sugerido';
+      approveBtn.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid rgba(0,229,160,.4);background:rgba(0,229,160,.1);color:var(--accent);cursor:pointer;transition:all .15s';
+      approveBtn.onmouseover = () => approveBtn.style.background = 'rgba(0,229,160,.2)';
+      approveBtn.onmouseout  = () => approveBtn.style.background = 'rgba(0,229,160,.1)';
+      approveBtn.onclick = e => { e.stopPropagation(); approvePartition(g.parentId); };
+      const rejectBtn = el('button','');
+      rejectBtn.textContent = '✗ Rechazar';
+      rejectBtn.title = 'Volver a un solo grupo sin particionar';
+      rejectBtn.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid rgba(255,92,53,.4);background:rgba(255,92,53,.1);color:var(--accent3);cursor:pointer;transition:all .15s';
+      rejectBtn.onmouseover = () => rejectBtn.style.background = 'rgba(255,92,53,.2)';
+      rejectBtn.onmouseout  = () => rejectBtn.style.background = 'rgba(255,92,53,.1)';
+      rejectBtn.onclick = e => { e.stopPropagation(); rejectPartition(g.parentId); };
+      actions.append(approveBtn, rejectBtn);
+      routeEl.appendChild(actions);
+    }
+  } else {
+    routeEl.textContent = routeCodes;
+  }
+
+  const zones = el('div', 'c-zones');
+  const zOrig = el('span', 'c-zone'); zOrig.textContent = g.origin_warehouse || g.origin_zone;
+  const zArr  = el('span', 'c-arrow'); zArr.textContent = '→';
+  const zDest = el('span', 'c-zone'); zDest.textContent = g.dest_zone;
+  zones.append(zOrig, zArr, zDest);
+  info.append(routeEl, zones);
+
+  const right = el('div', 'c-right');
+  const count = el('span', 'c-count'); count.textContent = g.arrangements.length + ' arr.';
+  right.appendChild(count);
+  if (costs) {
+    const tot = el('span', 'c-total');
+    tot.textContent = '$' + costs.total.toLocaleString('es-MX');
+    right.appendChild(tot);
+  }
+
+  const chev = el('div', 'c-chevron'); chev.textContent = '▼';
+
+  hdr.append(dot, info, right, chev);
+  card.appendChild(hdr);
+
+  // Meta row (always visible)
+  const meta = el('div', 'card-meta');
+
+  const mVol = makeMetaCell('Volumen', g.total_m3.toFixed(2) + ' m³', 'v-green');
+  const mPal = makeMetaCell('Pallets', g.total_pallets.toFixed(1), 'v-blue');
+  const mVeh = makeMetaCell('Vehículo', g.vehicle ? (g.vehicle.vehicle_name||g.vehicle.vehicle_type) : '—', '');
+  const mOcc = makeMetaCell('Ocupación', occ !== null ? occ+'%' : '—', occ !== null ? (occ>=80?'v-green':'v-orange') : 'v-red');
+  meta.append(mVol, mPal, mVeh, mOcc);
+  card.appendChild(meta);
+
+  // Body (toggled)
+  const body = el('div', 'card-body');
+
+  // Cost bar or warning
+  if (costs) {
+    body.appendChild(makeCostBar(g));
+  } else if (!g.routes.length) {
+    const warn = el('div', 'card-warn');
+    warn.textContent = '⚠ Sin ruta para ' + g.origin_zone + ' → ' + g.dest_zone;
+    body.appendChild(warn);
+  } else {
+    const warn = el('div', 'card-warn');
+    warn.textContent = '⚠ Sin tarifa vigente · ' + g.total_m3.toFixed(2) + ' m³ requeridos';
+    body.appendChild(warn);
+  }
+
+  // Arrangements list
+  body.appendChild(makeArrList(g));
+  card.appendChild(body);
+
+  // Drag & drop
+  card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+  card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+  card.addEventListener('dragend', () => document.querySelectorAll('.arr-item').forEach(x => x.classList.remove('dragging')));
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const { name, fromIdx } = S.drag;
+    if (name && fromIdx !== null && fromIdx !== g.idx) moveArr(name, fromIdx, g.idx);
+  });
+
+  return card;
+}
+
+function makeMetaCell(label, value, colorClass) {
+  const cell  = el('div', 'meta-cell');
+  const lbl   = el('div', 'meta-label'); lbl.textContent = label;
+  const val   = el('div', 'meta-val' + (colorClass ? ' ' + colorClass : '')); val.textContent = value;
+  cell.append(lbl, val);
+  return cell;
+}
+
+function makeCostBar(g) {
+  const bar = el('div', 'cost-bar');
+  const c   = g.costs;
+
+  bar.append(
+    makeCostItem('Flete', '$'+c.flete.toLocaleString('es-MX'), 'color:var(--accent2)'),
+    el('div','cost-divider'),
+    makeCostItem('Maniobras ×' + g.numM, '$'+c.maniobra.toLocaleString('es-MX'), 'color:var(--warning)'),
+  );
+
+  // Counter
+  const counter = el('div', 'counter');
+  const minus = el('button', 'cnt-btn'); minus.textContent = '−';
+  minus.onclick = e => { e.stopPropagation(); adjManiobras(g.idx, -1); };
+  const cval = el('span', 'cnt-val'); cval.id = 'cval-' + g.idx; cval.textContent = g.numM;
+  const plus = el('button', 'cnt-btn'); plus.textContent = '+';
+  plus.onclick = e => { e.stopPropagation(); adjManiobras(g.idx, 1); };
+  counter.append(minus, cval, plus);
+  bar.appendChild(counter);
+
+  bar.append(
+    el('div','cost-divider'),
+    makeCostItem('Repartos ×' + g.numRepartos, '$'+c.reparto.toLocaleString('es-MX'), 'color:var(--purple)'),
+    el('div','cost-divider'),
+  );
+
+  const totalItem = makeCostItem('Total', '$'+c.total.toLocaleString('es-MX'), '');
+  totalItem.classList.add('cost-total');
+  totalItem.id = 'ctotal-' + g.idx;
+  bar.appendChild(totalItem);
+
+  // Vehicle selector if multiple options
+  if (g.avail?.length > 1) {
+    const wrap = el('div',''); wrap.style.cssText = 'margin-left:auto;display:flex;flex-direction:column;gap:3px';
+    const lbl  = el('div','cost-label'); lbl.textContent = 'Vehículo';
+    const sel  = el('select','v-select');
+    sel.id = 'vsel-' + g.idx;
+    for (const r of g.avail) {
+      const opt = document.createElement('option');
+      opt.value = r.vehicle_type;
+      opt.textContent = (r.vehicle_name||r.vehicle_type) + ' — $' + r.rate.toLocaleString('es-MX') + ' (' + r.capacity + 'm³)';
+      if (g.vehicle?.vehicle_type === r.vehicle_type) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.onchange = e => { e.stopPropagation(); changeVehicle(g.idx, sel.value); };
+    wrap.append(lbl, sel);
+    bar.appendChild(wrap);
+  }
+
+  return bar;
+}
+
+function makeCostItem(label, value, style) {
+  const item = el('div', 'cost-item');
+  const lbl  = el('div', 'cost-label'); lbl.textContent = label;
+  const val  = el('div', 'cost-val');   val.textContent = value;
+  if (style) val.style.cssText = style;
+  item.append(lbl, val);
+  return item;
+}
+
+function makeArrList(g) {
+  const list  = el('div', 'arr-list');
+  const today = new Date().toISOString().slice(0,10);
+
+  for (const a of g.arrangements) {
+    const isMR = a.purpose === 'Material Request';
+    const late = a.etd && a.etd.slice(0,10) < today;
+
+    const row = el('div', 'arr-item' + (late ? ' late' : ''));
+    row.draggable = true;
+    row.addEventListener('dragstart', e => {
+      S.drag = { name: a.name, fromIdx: g.idx };
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    const id = el('span', 'ai-id'); id.title = a.name; id.textContent = a.name.slice(0,25) + (a.name.length>25?'…':'');
+    const badge = el('span', 'ai-badge ' + (isMR?'mr':'b2b')); badge.textContent = isMR?'MR':'B2B';
+    const name = el('span', 'ai-name'); name.textContent = a.customer || a.origin_warehouse || '—';
+    const m3   = el('span', 'ai-m3');   m3.textContent   = a.total_m3.toFixed(2) + ' m³';
+    const date = el('span', 'ai-date' + (late?' late':'')); date.textContent = (a.etd||'—').slice(0,10);
+
+    row.append(id, badge, name, m3, date);
+    list.appendChild(row);
+  }
+  return list;
+}
+
+// ── Helper DOM ────────────────────────────────────────────────
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+// ── Toggle ────────────────────────────────────────────────────
+function toggleCard(idx) {
+  const card = document.getElementById('card-' + idx);
+  if (!card) return;
+  if (S.open.has(idx)) {
+    S.open.delete(idx);
+    card.classList.remove('open');
+  } else {
+    S.open.add(idx);
+    card.classList.add('open');
+  }
+}
+
+function openAll()  { S.groups.forEach(g => S.open.add(g.idx));  renderAll(); }
+function closeAll() { S.open.clear(); renderAll(); }
+
+// ── Approve partition — mark as confirmed, remove action buttons ──
+function approvePartition(parentId) {
+  const parts = S.groups.filter(g => g.parentId === parentId);
+  parts.forEach(g => {
+    g.approved = true;
+    g.rejected = false;
+  });
+  renderAll();
+  const routeCode = parts[0]?.routes?.[0]?.route_code || parts[0]?.dest_zone || parentId;
+  addMsg('assistant',
+    `✅ Particionamiento aprobado para **${routeCode}**.
+` +
+    `Se confirman **${parts.length} transportes** con un total de **$${parts.reduce((s,g)=>s+(g.costs?.total||0),0).toLocaleString('es-MX')} MXN**.`
+  );
+}
+
+// ── Reject partition — merge all sub-transports back into one group ──
+function rejectPartition(parentId) {
+  const parts = S.groups.filter(g => g.parentId === parentId);
+  if (!parts.length) return;
+
+  // Merge all arrangements back into one group
+  const first = parts[0];
+  const allArr = parts.flatMap(g => g.arrangements);
+  const merged = {
+    id              : parentId,
+    origin_zone     : first.origin_zone,
+    dest_zone       : first.dest_zone,
+    origin_warehouse: first.origin_warehouse,
+    origin_city     : first.origin_city,
+    arrangements    : allArr,
+    dest_pcs        : [...new Set(allArr.flatMap(a => a.dest_pincodes||[]))],
+    total_m3        : Math.round(allArr.reduce((s,a) => s+a.total_m3,0)*100)/100,
+    total_pallets   : Math.round(allArr.reduce((s,a) => s+a.total_pallets,0)*10)/10,
+    numRepartos     : 0,
+    isPartition     : false,
+    approved        : false,
+    rejected        : true,
+    wasPartitioned  : true,
+    numM            : 0,
+  };
+  merged.numRepartos = Math.max(0, merged.dest_pcs.length - 1);
+
+  // Remove partitions and insert merged group at same position
+  const firstIdx = S.groups.findIndex(g => g.parentId === parentId);
+  S.groups = S.groups.filter(g => g.parentId !== parentId);
+  S.groups.splice(firstIdx, 0, merged);
+
+  // Re-index
+  S.groups.forEach((g, i) => {
+    g.idx   = i;
+    g.color = g.color || COLORS[i % COLORS.length];
+    if (!g.routes)  g.routes  = findRoutes(g);
+    if (!g.avail)   g.avail   = findRates(g);
+    if (!g.vehicle) g.vehicle = pickVehicle(g.avail, g.total_m3);
+    if (!g.costs)   g.costs   = calcCosts(g);
+  });
+
+  updateKPIs();
+  renderAll();
+
+  const m3 = merged.total_m3.toFixed(2);
+  addMsg('assistant',
+    `↩️ Particionamiento rechazado. Los **${allArr.length} arrangements** vuelven a un solo grupo (**${m3} m³**).
+` +
+    `Nota: este grupo supera la capacidad máxima de 16 m³. Puedes mover arrangements manualmente para reorganizarlo.`
+  );
+}
+
+// ── Maniobras / Vehicle ───────────────────────────────────────
+function adjManiobras(idx, delta) {
+  const g = S.groups.find(x => x.idx === idx);
+  if (!g) return;
+  g.numM  = Math.max(0, g.numM + delta);
+  g.costs = calcCosts(g);
+
+  // Update DOM directly without full re-render
+  const cvalEl = document.getElementById('cval-' + idx);
+  if (cvalEl) cvalEl.textContent = g.numM;
+
+  const ctotalEl = document.getElementById('ctotal-' + idx);
+  if (ctotalEl && g.costs) {
+    ctotalEl.querySelector('.cost-val').textContent = '$' + g.costs.total.toLocaleString('es-MX');
+  }
+  updateKPIs();
+}
+
+function changeVehicle(idx, vtype) {
+  const g = S.groups.find(x => x.idx === idx);
+  if (!g) return;
+  g.vehicle = g.avail.find(r => r.vehicle_type === vtype) || g.vehicle;
+  g.costs   = calcCosts(g);
+  updateKPIs();
+  renderAll();
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────
+function moveArr(name, fromIdx, toIdx) {
+  const from = S.groups.find(g => g.idx === fromIdx);
+  const to   = S.groups.find(g => g.idx === toIdx);
+  if (!from || !to) return;
+  const i = from.arrangements.findIndex(a => a.name === name);
+  if (i === -1) return;
+  const [arr] = from.arrangements.splice(i, 1);
+  to.arrangements.push(arr);
+
+  [from, to].forEach(g => {
+    g.total_m3      = Math.round(g.arrangements.reduce((s,a) => s+a.total_m3, 0) * 100) / 100;
+    g.total_pallets = Math.round(g.arrangements.reduce((s,a) => s+a.total_pallets, 0) * 10) / 10;
+    g.dest_pcs      = [...new Set(g.arrangements.flatMap(a => a.dest_pincodes||[]))];
+    g.numRepartos   = Math.max(0, g.dest_pcs.length - 1);
+    g.vehicle       = pickVehicle(g.avail||[], g.total_m3);
+    g.costs         = calcCosts(g);
+  });
+
+  S.groups = S.groups.filter(g => g.arrangements.length > 0);
+  S.open.add(fromIdx); S.open.add(toIdx);
+  updateKPIs();
+  renderAll();
+
+  addMsg('assistant',
+    `Moví **${name.slice(0,40)}** al grupo **${to.routes?.[0]?.route_code||to.dest_zone}**.\n` +
+    `Grupo destino: **${to.total_m3.toFixed(2)} m³** · ${to.arrangements.length} arrangements.`
+  );
+}
+
+// ── Auto message ─────────────────────────────────────────────
+function autoMsg() {
+  const cost = S.groups.reduce((s,g) => s+(g.costs?.total||0), 0);
+  const nr   = S.groups.filter(g => !g.routes.length).length;
+  const nt   = S.groups.filter(g => g.routes.length>0 && !g.vehicle).length;
+  const partitioned = S.groups.filter(g => g.isPartition);
+  const parentIds   = [...new Set(partitioned.map(g => g.parentId))];
+  addMsg('assistant',
+    `Plan generado ✓\n\n` +
+    `📦 **${ERP_DATA.arrangements.length} arrangements** → **${S.groups.length} transportes**\n` +
+    `💰 Costo estimado: **$${cost.toLocaleString('es-MX')} MXN**\n` +
+    (parentIds.length > 0 ? `🔀 **${parentIds.length} grupos** particionados en múltiples transportes\n` : '') +
+    (nr>0 ? `⚠️ **${nr} grupos** sin ruta catalogada\n` : '') +
+    (nt>0 ? `⚠️ **${nt} grupos** con ruta pero sin tarifa\n` : '') +
+    `\nLos primeros 5 grupos están expandidos. ¿En qué te ayudo?`
+  );
+}
+
+// ── Claude Chat ───────────────────────────────────────────────
+function buildCtx() {
+  const cost = S.groups.reduce((s,g) => s+(g.costs?.total||0), 0);
+  const sum  = S.groups.slice(0,30).map(g => ({
+    zona_orig : g.origin_zone, zona_dest: g.dest_zone,
+    almacen   : g.origin_warehouse,
+    ruta      : g.routes?.[0]?.route_code||'SIN RUTA',
+    arr       : g.arrangements.length,
+    m3        : g.total_m3.toFixed(2),
+    vehiculo  : g.vehicle?.vehicle_name||'—',
+    ocupacion : g.vehicle ? Math.round((g.total_m3/g.vehicle.capacity)*100)+'%' : '—',
+    costo     : g.costs?.total||0,
+    sin_ruta  : !g.routes.length,
+    sin_tarifa: g.routes.length>0 && !g.vehicle,
+  }));
+
+  return `Eres experto en logística para ZeCore/ZeBrands (KSMV). Hoy: ${new Date().toLocaleDateString('es-MX')}.
+Responde en español, conciso y accionable.
+Reglas: vehículo ≥80% capacidad. Repartos = CPs distintos-1. Maniobra = costo por servicio.
+
+PLAN: ${S.groups.length} grupos · $${cost.toLocaleString('es-MX')} MXN · ${S.groups.filter(g=>!g.routes.length).length} sin ruta
+
+GRUPOS (top 30):
+${JSON.stringify(sum)}`;
+}
+
+function addMsg(role, txt) {
+  const msgs = document.getElementById('messages');
+  const now  = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const div  = el('div', 'msg ' + role);
+  const bub  = el('div', 'bubble');
+  bub.innerHTML = txt.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  const time = el('span', 'msg-time'); time.textContent = now;
+  div.append(bub, time);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function ask(t) { document.getElementById('msg-input').value = t; sendMsg(); }
+
+// ── Export plan to CSV ───────────────────────────────────────
+function csvQ(val) {
+  var s = String(val == null ? '' : val).replace(/"/g, '""');
+  if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) {
+    return '"' + s + '"';
+  }
+  return s;
+}
+
+function exportCSV() {
+  if (!S.groups.length) { alert('Genera el plan primero.'); return; }
+
+  var today = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+  var lines  = [];
+
+  // Header row
+  lines.push([
+    'Grupo','Transporte','Ruta','Zona Origen','Almacen Origen','Zona Destino',
+    'Vehiculo','Capacidad m3','Vol Grupo m3','Ocupacion %','Pallets',
+    'Repartos','Maniobras','Costo Flete','Costo Maniobra','Costo Reparto','Costo Total','Estado',
+    'Arrangement','Proposito','Cliente','ETD','Fecha Entrega',
+    'Vol Arr m3','CPs Destino','Carrier','Status'
+  ].map(csvQ).join(','));
+
+  for (var gi = 0; gi < S.groups.length; gi++) {
+    var g     = S.groups[gi];
+    var route = g.routes && g.routes[0] ? g.routes[0].route_code : 'SIN RUTA';
+    var veh   = g.vehicle ? (g.vehicle.vehicle_name || g.vehicle.vehicle_type) : '';
+    var cap   = g.vehicle ? g.vehicle.capacity : 0;
+    var occ   = cap > 0 ? Math.round((g.total_m3 / cap) * 100) : 0;
+    var costs = g.costs || {};
+    var trans = g.isPartition ? (g.partNum + '/' + g.totalParts) : '1/1';
+    var estado = g.approved ? 'Aprobado' : g.wasPartitioned ? 'Excede Cap' : g.isPartition ? 'Sugerido' : 'Normal';
+
+    for (var ai = 0; ai < g.arrangements.length; ai++) {
+      var a = g.arrangements[ai];
+      lines.push([
+        csvQ(g.id),
+        csvQ(trans),
+        csvQ(route),
+        csvQ(g.origin_zone),
+        csvQ(g.origin_warehouse),
+        csvQ(g.dest_zone),
+        csvQ(veh),
+        cap.toFixed(2),
+        g.total_m3.toFixed(2),
+        occ + '%',
+        g.total_pallets.toFixed(1),
+        g.numRepartos,
+        g.numM || 0,
+        (costs.flete || 0),
+        (costs.maniobra || 0),
+        (costs.reparto || 0),
+        (costs.total || 0),
+        csvQ(estado),
+        csvQ(a.name),
+        csvQ(a.purpose === 'Material Request' ? 'MR' : 'B2B'),
+        csvQ(a.customer || a.origin_warehouse || ''),
+        csvQ((a.etd || '').slice(0, 16)),
+        csvQ(a.delivery_date || ''),
+        (a.total_m3 || 0).toFixed(4),
+        csvQ((a.dest_pincodes || []).join(' | ')),
+        csvQ(a.carrier || ''),
+        csvQ(a.status || '')
+      ].join(','));
+    }
+  }
+
+  var bom  = '\uFEFF';
+  var blob = new Blob([bom + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'zecore_plan_rutas_' + today + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  var totalArr = S.groups.reduce(function(s,g){ return s + g.arrangements.length; }, 0);
+  addMsg('assistant', '📄 CSV exportado: zecore_plan_rutas_' + today + '.csv\n' +
+    S.groups.length + ' transportes · ' + totalArr + ' arrangements');
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('msg-input');
+  const btn = document.getElementById('send-btn');
+  const txt = inp.value.trim();
+  if (!txt || S.aiLoading) return;
+  inp.value = ''; inp.style.height = 'auto';
+  addMsg('user', txt);
+  S.chatHist.push({ role:'user', content:txt });
+  S.aiLoading = true; btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  const typDiv = addMsg('assistant', '⏳');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-api-key':ANTHROPIC_KEY,
+                 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200,
+                             system:buildCtx(), messages:S.chatHist })
+    });
+    const d     = await r.json();
+    const reply = d.content?.[0]?.text || 'Sin respuesta.';
+    typDiv.querySelector('.bubble').innerHTML =
+      reply.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    S.chatHist.push({ role:'assistant', content:reply });
+    if (S.chatHist.length > 20) S.chatHist = S.chatHist.slice(-16);
+  } catch(e) {
+    typDiv.querySelector('.bubble').textContent = 'Error: ' + e.message;
+  } finally {
+    S.aiLoading = false; btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+  }
+}
+</script>
+</body>
+</html>
