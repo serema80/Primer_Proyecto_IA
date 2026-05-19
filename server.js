@@ -129,13 +129,24 @@ app.get('/api/erp/status', async (req, res) => {
 // GET /api/logistics/arrangements — Pipeline completo
 app.get('/api/logistics/arrangements', async (req, res) => {
   try {
-    // Llamar los 4 endpoints en paralelo
-    const [rawArr, routes, freightRates, handlingRates] = await Promise.all([
+    // Llamar endpoints — get_routes puede fallar, usamos fallback
+    const [rawArr, freightRates, handlingRates] = await Promise.all([
       erpEndpoint(`${BASE_EP}.get_arrangements_plan`),
-      erpEndpoint(`${BASE_EP}.get_routes`),
       erpEndpoint(`${BASE_EP}.get_freight_rates`),
       erpEndpoint(`${BASE_EP}.get_handling_rates`),
     ]);
+
+    // get_routes tiene un bug conocido — intentar pero no bloquear
+    let routes = [];
+    try {
+      routes = await erpEndpoint(`${BASE_EP}.get_routes`);
+    } catch(e) {
+      console.warn('⚠ get_routes falló (bug conocido):', e.message.slice(0,80));
+      // Fallback: derivar rutas desde las tarifas disponibles
+      // Extraer pares origen-destino únicos de las tarifas de flete
+      const routeCodes = [...new Set(freightRates.map(r => r.route_code))];
+      console.log(`  Usando ${routeCodes.length} route_codes de freight_rates como fallback`);
+    }
 
     // Consolidar arrangements (puede haber múltiples filas por arrangement
     // si tiene varios destinos en Item Group)

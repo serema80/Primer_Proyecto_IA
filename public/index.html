@@ -236,17 +236,18 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
     <div class="login-logo"><div class="login-logo-dot"></div>ZECORE · LOGISTICS</div>
     <div>
       <div class="login-title">Iniciar sesión</div>
-      <div class="login-subtitle">Acceso con tu cuenta institucional</div>
+      <div class="login-subtitle">Ingresa tus credenciales de ERPNext</div>
     </div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8;padding:4px 0;border:1px solid var(--border);border-radius:6px;padding:12px 14px;background:var(--surface2)">
-      Haz clic en <strong style="color:var(--text)">ENTRAR CON ZECORE</strong> para autenticarte con tu cuenta institucional.<br>
-      Serás redirigido a Zecore para autorizar el acceso.
+    <div class="login-field">
+      <label class="login-label">Usuario ERPNext</label>
+      <input class="login-input" id="login-usr" type="email" placeholder="usuario@empresa.com"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:4px 0">
+      Ingresa tu correo registrado en ERPNext
     </div>
     <div class="login-error" id="login-error"></div>
-    <button class="login-btn" id="login-btn" onclick="doLogin()" style="display:flex;align-items:center;justify-content:center;gap:8px">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-      ENTRAR CON ZECORE
-    </button>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">ENTRAR</button>
     <div class="login-erp" id="login-erp-url"></div>
   </div>
 </div>
@@ -299,11 +300,11 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
   <div class="chat">
     <div class="chat-hdr">
       <div class="chat-icon">✦</div>
-      <div><h2>Asistente de Rutas</h2><p>Análisis con datos reales de Zecore</p></div>
+      <div><h2>Asistente de Rutas</h2><p>Análisis con datos reales de ERPNext</p></div>
     </div>
     <div class="messages" id="messages">
       <div class="msg assistant">
-        <div class="bubble">Hola 👋 Tengo cargados los datos de tu Zecore.<br>Presiona <strong>GENERAR PLAN</strong> y te ayudo a analizar grupos, costos y optimizaciones.</div>
+        <div class="bubble">Hola 👋 Tengo cargados los datos de tu ERPNext.<br>Presiona <strong>GENERAR PLAN</strong> y te ayudo a analizar grupos, costos y optimizaciones.</div>
         <span class="msg-time"></span>
       </div>
     </div>
@@ -334,11 +335,47 @@ var ERP_DATA = { arrangements: [], routes: [], rates: [], handling: [], pcZoneMa
 // ── Auth ─────────────────────────────────────────────────────
 const PROXY = 'http://localhost:3001';
 var SESSION = { token: null, user: null, fullName: null };
-var PROXY = ''; // Vercel: use relative paths
 
 function doLogin() {
-  // Redirigir a OAuth de Zecore
-  window.location.href = '/api/auth/login';
+  var usr = document.getElementById('login-usr').value.trim();
+  var btn = document.getElementById('login-btn');
+  var err = document.getElementById('login-error');
+
+  if (!usr) {
+    showLoginError('Ingresa tu usuario de ERPNext');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'VERIFICANDO...';
+  err.classList.remove('show');
+
+  fetch(PROXY + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usr: usr })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      SESSION.token    = d.token;
+      SESSION.user     = d.user;
+      SESSION.fullName = d.fullName;
+      sessionStorage.setItem('zc_token',    d.token);
+      sessionStorage.setItem('zc_user',     d.user);
+      sessionStorage.setItem('zc_fullname', d.fullName);
+      showDashboard();
+    } else {
+      showLoginError(d.error || 'Credenciales incorrectas');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+    }
+  })
+  .catch(function(e) {
+    showLoginError('No se pudo conectar al servidor. ¿Está corriendo npm start?');
+    btn.disabled = false;
+    btn.textContent = 'ENTRAR';
+  });
 }
 
 function showLoginError(msg) {
@@ -359,7 +396,7 @@ function showDashboard() {
 }
 
 function doLogout() {
-  fetch('/api/auth/logout', {
+  fetch(PROXY + '/api/auth/logout', {
     method: 'POST',
     headers: { 'x-session-token': SESSION.token || '' }
   }).catch(function(){});
@@ -376,38 +413,14 @@ function doLogout() {
 
 // Check existing session on load
 document.addEventListener('DOMContentLoaded', function() {
-  // Verificar si venimos de callback OAuth (parámetros en URL)
-  var urlParams = new URLSearchParams(window.location.search);
-  var oauthSession = urlParams.get('session');
-  var oauthUser    = urlParams.get('user');
-  var oauthName    = urlParams.get('name');
-  var oauthError   = urlParams.get('error');
-
-  if (oauthError) {
-    showLoginError('Error de autenticación: ' + decodeURIComponent(oauthError));
-  }
-
-  if (oauthSession && oauthUser) {
-    // Guardar sesión OAuth en sessionStorage
-    sessionStorage.setItem('zc_token',    oauthSession);
-    sessionStorage.setItem('zc_user',     decodeURIComponent(oauthUser));
-    sessionStorage.setItem('zc_fullname', decodeURIComponent(oauthName || oauthUser));
-    // Limpiar URL
-    window.history.replaceState({}, '', '/');
-    SESSION.token    = oauthSession;
-    SESSION.user     = decodeURIComponent(oauthUser);
-    SESSION.fullName = decodeURIComponent(oauthName || oauthUser);
-    showDashboard();
-    return;
-  }
-
-  // Verificar sesión existente en sessionStorage
   var token    = sessionStorage.getItem('zc_token');
   var user     = sessionStorage.getItem('zc_user');
   var fullName = sessionStorage.getItem('zc_fullname');
+  var erpUrl   = document.getElementById('login-erp-url');
+  if (erpUrl) erpUrl.textContent = 'ERP: ' + PROXY.replace('http://localhost:3001','') + 'zecore.develop.zebrands.mx';
 
   if (token) {
-    fetch('/api/auth/validate', {
+    fetch(PROXY + '/api/auth/validate', {
       headers: { 'x-session-token': token }
     })
     .then(function(r) { return r.json(); })
@@ -440,7 +453,7 @@ const S = {
 };
 
 // ── Init ─────────────────────────────────────────────────────
-document.getElementById('init-info').textContent = 'Datos en tiempo real desde Zecore';
+document.getElementById('init-info').textContent = 'Datos en tiempo real desde ERPNext';
 document.getElementById('hdr-info').textContent = 'Conectando...';
 
 // ── Build Plan ───────────────────────────────────────────────
@@ -450,9 +463,9 @@ function buildPlan() {
   btn.disabled = true;
 
   document.getElementById('scroll-area').innerHTML =
-    '<div class="empty"><div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div><span>Consultando Zecore en tiempo real...</span></div>';
+    '<div class="empty"><div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div><span>Consultando ERPNext en tiempo real...</span></div>';
 
-  fetch('/api/logistics/arrangements', {
+  fetch(PROXY + '/api/logistics/arrangements', {
     headers: SESSION.token ? { 'x-session-token': SESSION.token } : {}
   })
   .then(function(r) { return r.json(); })
@@ -498,7 +511,7 @@ function buildPlan() {
   .catch(function(e) {
     addMsg('assistant', '❌ Error: ' + e.message);
     document.getElementById('scroll-area').innerHTML =
-      '<div class="empty" style="color:var(--accent3)">Error al cargar datos de Zecore:<br>' + e.message + '</div>';
+      '<div class="empty" style="color:var(--accent3)">Error al cargar datos de ERPNext:<br>' + e.message + '</div>';
     console.error(e);
   })
   .finally(function() {
