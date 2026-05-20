@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZeCore · Planeación de Rutas v2</title>
+<title>ZeCore · Planeación de Rutas</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -332,9 +332,8 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 var ERP_DATA = { arrangements: [], routes: [], rates: [], handling: [], pcZoneMap: {} };
 
 // ── Auth ─────────────────────────────────────────────────────
-const PROXY = 'http://localhost:3001';
+var PROXY = ''; // Vercel: rutas relativas
 var SESSION = { token: null, user: null, fullName: null };
-var PROXY = ''; // Vercel: use relative paths
 
 function doLogin() {
   // Redirigir a OAuth de Zecore
