@@ -1,5 +1,5 @@
 // api/logistics/arrangements.js
-const { erpEndpoint, getSession, setCors, BASE_EP } = require('../_helpers');
+const { erpEndpoint, verifyToken, setCors, BASE_EP } = require('../_helpers');
 
 module.exports = async (req, res) => {
   setCors(res);
@@ -7,8 +7,8 @@ module.exports = async (req, res) => {
 
   // Validar sesión
   const token   = req.headers['x-session-token'];
-  const session = getSession(token);
-  if (!session) {
+  const payload = verifyToken(token);
+  if (!payload) {
     return res.status(401).json({ ok: false, error: 'Sesión requerida' });
   }
 

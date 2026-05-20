@@ -1,10 +1,11 @@
-// api/_helpers.js — Utilidades compartidas entre serverless functions
+// api/_helpers.js — Utilidades compartidas
 const fetch = require('node-fetch');
 
-const ERPNEXT_URL     = process.env.ERPNEXT_URL;
-const API_KEY         = process.env.ERPNEXT_API_KEY;
-const API_SECRET      = process.env.ERPNEXT_API_SECRET;
-const BASE_EP         = 'zecore_payments.api.routes.boarding.dashboard_endpoints';
+const ERPNEXT_URL = process.env.ERPNEXT_URL;
+const API_KEY     = process.env.ERPNEXT_API_KEY;
+const API_SECRET  = process.env.ERPNEXT_API_SECRET;
+const BASE_EP     = 'zecore_payments.api.routes.boarding.dashboard_endpoints';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'zecore-secret-2026';
 
 function erpHeaders() {
   return {
@@ -37,39 +38,37 @@ async function erpFetch(endpoint, params = {}) {
   return r.json();
 }
 
-// ── Session store (in-memory, resets on cold start) ──────────
-// Para producción real usar Redis o similar
-const sessions = new Map();
-
-function makeToken() {
-  return Math.random().toString(36).slice(2) +
-         Math.random().toString(36).slice(2) +
-         Date.now().toString(36);
+// ── JWT simple (sin librería externa) ───────────────────────
+function b64encode(str) {
+  return Buffer.from(str).toString('base64url');
+}
+function b64decode(str) {
+  return Buffer.from(str, 'base64url').toString('utf8');
 }
 
-function createSession(user, fullName, accessToken) {
-  const token   = makeToken();
-  const expires = Date.now() + 8 * 60 * 60 * 1000; // 8 hrs
-  sessions.set(token, { user, fullName, accessToken, expires });
-  // Limpiar sesiones vencidas
-  for (const [k, v] of sessions.entries()) {
-    if (v.expires < Date.now()) sessions.delete(k);
-  }
-  return token;
+function createToken(payload) {
+  const header  = b64encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body    = b64encode(JSON.stringify({ ...payload, exp: Date.now() + 8*60*60*1000 }));
+  const crypto  = require('crypto');
+  const sig     = crypto.createHmac('sha256', SESSION_SECRET)
+                        .update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
 }
 
-function getSession(token) {
-  if (!token) return null;
-  const s = sessions.get(token);
-  if (!s || s.expires < Date.now()) {
-    sessions.delete(token);
+function verifyToken(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const crypto = require('crypto');
+    const expected = crypto.createHmac('sha256', SESSION_SECRET)
+                           .update(`${parts[0]}.${parts[1]}`).digest('base64url');
+    if (expected !== parts[2]) return null;
+    const payload = JSON.parse(b64decode(parts[1]));
+    if (payload.exp < Date.now()) return null;
+    return payload;
+  } catch(e) {
     return null;
   }
-  return s;
-}
-
-function deleteSession(token) {
-  sessions.delete(token);
 }
 
 function setCors(res) {
@@ -81,6 +80,5 @@ function setCors(res) {
 module.exports = {
   ERPNEXT_URL, API_KEY, API_SECRET, BASE_EP,
   erpHeaders, erpEndpoint, erpFetch,
-  sessions, makeToken, createSession, getSession, deleteSession,
-  setCors,
+  createToken, verifyToken, setCors,
 };
