@@ -7,9 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0a0c0f; --surface: #111318; --surface2: #181c23; --surface3: #1e2430;
-  --border: #252d3a; --accent: #00e5a0; --accent2: #0077ff; --accent3: #ff5c35;
-  --text: #e8eaf0; --muted: #5a6480; --warning: #f5a623; --purple: #a05aff;
+  --bg: #f4f6f9; --surface: #ffffff; --surface2: #f0f2f5; --surface3: #e4e8ed;
+  --border: #d0d7e2; --accent: #00a06e; --accent2: #0055cc; --accent3: #d93a1a;
+  --text: #1a1f2e; --muted: #6b7590; --warning: #b87a00; --purple: #6b3fc0;
   --mono: 'Space Mono', monospace; --sans: 'Syne', sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,6 +29,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
   padding: 40px;
   width: 380px;
   display: flex; flex-direction: column; gap: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 .login-logo {
   font-family: var(--mono); font-size: 13px; letter-spacing: .15em;
@@ -84,7 +85,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 .logout-btn:hover { border-color: var(--accent3); color: var(--accent3); }
 
 /* Header */
-header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; background: rgba(10,12,15,.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; background: rgba(244,246,249,.96); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--border); border-bottom: 1px solid var(--border); }
 .logo { font-family: var(--mono); font-size: 12px; letter-spacing: .15em; color: var(--accent); display: flex; align-items: center; gap: 8px; }
 .logo-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
@@ -184,7 +185,7 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 .arr-list { padding: 8px; display: flex; flex-direction: column; gap: 3px; max-height: 280px; overflow-y: auto; }
 .arr-list::-webkit-scrollbar { width: 3px; }
 .arr-list::-webkit-scrollbar-thumb { background: var(--border); }
-.arr-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; cursor: grab; transition: all .15s; }
+.arr-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; cursor: grab; transition: all .15s; }
 .arr-item:hover { background: var(--surface2); border-color: var(--surface3); }
 .arr-item.dragging { opacity: .3; }
 .arr-item.late { border-color: rgba(255,92,53,.35); }
@@ -213,7 +214,7 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 .msg.user { align-items: flex-end; }
 .msg.assistant { align-items: flex-start; }
 .bubble { max-width: 94%; padding: 9px 12px; border-radius: 7px; font-size: 12px; line-height: 1.6; }
-.msg.user .bubble { background: rgba(0,119,255,.18); border: 1px solid rgba(0,119,255,.25); }
+.msg.user .bubble { background: rgba(0,85,204,.1); border: 1px solid rgba(0,85,204,.2); }
 .msg.assistant .bubble { background: var(--surface2); border: 1px solid var(--border); }
 .msg-time { font-family: var(--mono); font-size: 9px; color: var(--muted); padding: 0 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
