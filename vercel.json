@@ -1,20 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "public/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "env": {
-    "ERPNEXT_URL": "@erpnext_url",
-    "ERPNEXT_API_KEY": "@erpnext_api_key",
-    "ERPNEXT_API_SECRET": "@erpnext_api_secret",
-    "OAUTH_CLIENT_ID": "@oauth_client_id",
-    "OAUTH_CLIENT_SECRET": "@oauth_client_secret",
-    "OAUTH_REDIRECT_URI": "@oauth_redirect_uri",
-    "SESSION_SECRET": "@session_secret"
-  }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ]
 }
