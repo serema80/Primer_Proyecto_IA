@@ -332,9 +332,8 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 var ERP_DATA = { arrangements: [], routes: [], rates: [], handling: [], pcZoneMap: {} };
 
 // ── Auth ─────────────────────────────────────────────────────
-const PROXY = 'http://localhost:3001';
+var PROXY = ''; // Vercel: rutas relativas
 var SESSION = { token: null, user: null, fullName: null };
-var PROXY = ''; // Vercel: use relative paths
 
 function doLogin() {
   // Redirigir a OAuth de Zecore
