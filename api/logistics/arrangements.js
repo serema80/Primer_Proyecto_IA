@@ -14,8 +14,17 @@ module.exports = async (req, res) => {
 
   try {
     // Llamar endpoints en paralelo
+    // Leer rango de fechas desde query params
+    const dateFrom = req.query.date_from || '';
+    const dateTo   = req.query.date_to   || '';
+
+    // Construir URL del endpoint con fechas opcionales
+    const arrUrl = dateFrom && dateTo
+      ? `${BASE_EP}.get_arrangements_plan?date_from=${dateFrom}&date_to=${dateTo}`
+      : `${BASE_EP}.get_arrangements_plan`;
+
     const [rawArr, freightRates, handlingRates] = await Promise.all([
-      erpEndpoint(`${BASE_EP}.get_arrangements_plan`),
+      erpEndpoint(arrUrl),
       erpEndpoint(`${BASE_EP}.get_freight_rates`),
       erpEndpoint(`${BASE_EP}.get_handling_rates`),
     ]);
