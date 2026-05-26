@@ -534,11 +534,18 @@ function makeGroups() {
   const norm  = pc => (pc||'').trim().padStart(5,'0');
 
   for (const a of ERP_DATA.arrangements) {
-    const oz = pcMap[norm(a.origin_pincode)] || ('CP-' + a.origin_pincode);
+    // Usar zonas directamente del endpoint — ya vienen resueltas desde Zecore
+    const oz = a.origin_zone || pcMap[norm(a.origin_pincode)] || ('CP-' + a.origin_pincode);
     let dz = null;
-    for (const dp of (a.dest_pincodes || [])) {
-      const z = pcMap[norm(dp)];
-      if (z) { dz = z; break; }
+    // dest_zones viene como array paralelo a dest_pincodes
+    if (a.dest_zones && a.dest_zones.length > 0) {
+      dz = a.dest_zones.find(z => z) || null;
+    }
+    if (!dz) {
+      for (const dp of (a.dest_pincodes || [])) {
+        const z = pcMap[norm(dp)];
+        if (z) { dz = z; break; }
+      }
     }
     if (!dz) dz = 'CP-' + ((a.dest_pincodes||[])[0]||'?');
 
