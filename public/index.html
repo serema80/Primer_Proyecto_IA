@@ -438,7 +438,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ── Config ──────────────────────────────────────────────────
 const ANTHROPIC_KEY = 'TU_ANTHROPIC_API_KEY_AQUI';
-const MAX_CAP       = 0.80;
+const MAX_CAP       = 0.80;  // mínimo de ocupación
+const MAX_CAP_UPPER = 1.02; // máximo de ocupación (permite hasta 102%)
 const COLORS        = ['#00e5a0','#0077ff','#f5a623','#ff5c35','#a05aff','#00c8e5','#e5a000','#ff5599','#a0e500','#ff6600','#00ffe5','#aa00ff'];
 const HAND_CODES    = ['MX Reparto','MX Maniobra Boarding','MX Maniobra Boarding B2B'];
 
@@ -489,7 +490,7 @@ function buildPlan() {
 
     // Group and plan
     const rawGroups = makeGroups();
-    const MAX_VOL   = 20.0 * MAX_CAP; // 16 m3
+    const MAX_VOL   = 20.0 * MAX_CAP_UPPER; // 20.4 m3 (102% de trailer)
     let allGroups   = [];
     for (const g of rawGroups) {
       if (g.total_m3 > MAX_VOL) {
@@ -672,8 +673,24 @@ function findRates(g) {
 }
 
 function pickVehicle(rates, m3) {
-  const min = m3 / MAX_CAP;
-  return rates.filter(r => r.capacity >= min).sort((a,b) => a.rate - b.rate)[0] || null;
+  // Vehículo válido: el volumen ocupa entre 80% y 102% de su capacidad
+  // Es decir: capacity >= m3 (cabe fisicamente) Y capacity <= m3 / MAX_CAP (no va muy vacío)
+  // Si ningún vehículo cumple el mínimo del 80%, elegir el más pequeño que físicamente quepa
+  var ideal = rates
+    .filter(function(r) {
+      var occ = m3 / r.capacity;
+      return occ >= MAX_CAP && occ <= MAX_CAP_UPPER; // entre 80% y 102%
+    })
+    .sort(function(a,b) { return a.rate - b.rate; });
+
+  if (ideal.length > 0) return ideal[0];
+
+  // Fallback: el más pequeño que físicamente quepa (aunque vaya menos del 80% lleno)
+  var fallback = rates
+    .filter(function(r) { return r.capacity >= m3; })
+    .sort(function(a,b) { return a.capacity - b.capacity; });
+
+  return fallback[0] || null;
 }
 
 function calcCosts(g) {
