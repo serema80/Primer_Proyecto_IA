@@ -437,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ── Config ──────────────────────────────────────────────────
-const ANTHROPIC_KEY = 'TU_ANTHROPIC_API_KEY_AQUI';
+// ANTHROPIC_API_KEY se maneja en el servidor (api/chat.js)
 const MAX_CAP       = 0.80;  // mínimo de ocupación
 const MAX_CAP_UPPER = 1.02; // máximo de ocupación (permite hasta 102%)
 const COLORS        = ['#00e5a0','#0077ff','#f5a623','#ff5c35','#a05aff','#00c8e5','#e5a000','#ff5599','#a0e500','#ff6600','#00ffe5','#aa00ff'];
@@ -1309,15 +1309,13 @@ async function sendMsg() {
 
   const typDiv = addMsg('assistant', '⏳');
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key':ANTHROPIC_KEY,
-                 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200,
-                             system:buildCtx(), messages:S.chatHist })
+      headers: { 'Content-Type':'application/json', 'x-session-token': SESSION.token || '' },
+      body: JSON.stringify({ system:buildCtx(), messages:S.chatHist, max_tokens:1200 })
     });
     const d     = await r.json();
-    const reply = d.content?.[0]?.text || 'Sin respuesta.';
+    const reply = d.content?.[0]?.text || d.error || 'Sin respuesta.';
     typDiv.querySelector('.bubble').innerHTML =
       reply.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
     S.chatHist.push({ role:'assistant', content:reply });
