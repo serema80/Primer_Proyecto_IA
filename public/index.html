@@ -549,10 +549,12 @@ function makeGroups() {
     }
     if (!dz) dz = 'CP-' + ((a.dest_pincodes||[])[0]||'?');
 
-    const key = oz + '||' + dz;
+    // Include ETD date in grouping key to avoid mixing different delivery dates
+    const etdDate = (a.etd || '').slice(0, 10); // YYYY-MM-DD
+    const key = oz + '||' + dz + '||' + etdDate;
     if (!map[key]) {
       map[key] = {
-        id: key, origin_zone: oz, dest_zone: dz,
+        id: key, origin_zone: oz, dest_zone: dz, etd_date: etdDate,
         origin_warehouse: a.origin_warehouse, origin_city: a.origin_city,
         arrangements: [], dest_pcs: new Set(),
         total_m3: 0, total_pallets: 0, numRepartos: 0,
@@ -848,7 +850,11 @@ function makeCard(g) {
   const zOrig = el('span', 'c-zone'); zOrig.textContent = g.origin_warehouse || g.origin_zone;
   const zArr  = el('span', 'c-arrow'); zArr.textContent = '→';
   const zDest = el('span', 'c-zone'); zDest.textContent = g.dest_zone;
+  const zEtd  = el('span', '');
+  zEtd.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--accent2);margin-left:4px;background:rgba(0,85,204,.08);padding:1px 6px;border-radius:3px';
+  zEtd.textContent = g.etd_date || '';
   zones.append(zOrig, zArr, zDest);
+  if (g.etd_date) zones.appendChild(zEtd);
   info.append(routeEl, zones);
 
   const right = el('div', 'c-right');
@@ -981,6 +987,18 @@ function makeCostItem(label, value, style) {
 function makeArrList(g) {
   const list  = el('div', 'arr-list');
   const today = new Date().toISOString().slice(0,10);
+
+  // Header row
+  const hdr = el('div', '');
+  hdr.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px 4px 10px;border-bottom:1px solid var(--border);margin-bottom:4px';
+  const hdrLabel = el('span','');
+  hdrLabel.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700';
+  hdrLabel.textContent = `Arrangements incluidos (${g.arrangements.length})`;
+  const hdrCols = el('div','');
+  hdrCols.style.cssText = 'display:flex;gap:8px;margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em';
+  hdrCols.innerHTML = '<span style="min-width:60px;text-align:right">Vol m³</span><span style="min-width:80px;text-align:right">ETD</span>';
+  hdr.append(hdrLabel, hdrCols);
+  list.appendChild(hdr);
 
   for (const a of g.arrangements) {
     const isMR = a.purpose === 'Material Request';
