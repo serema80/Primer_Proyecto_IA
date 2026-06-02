@@ -132,7 +132,7 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* Group card */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; animation: fadeIn .2s ease; overflow: visible; min-height: 80px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; animation: fadeIn .2s ease; }
 .card.drag-over { border-color: var(--accent2); }
 
 /* Card header */
@@ -781,6 +781,7 @@ function makeCard(g) {
   // Root
   const card = el('div', 'card' + (isOpen ? ' open' : ''));
   card.id = 'card-' + g.idx;
+  card.style.cssText = 'display:block;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px';
 
   // Header
   const hdr = el('div', 'card-hdr');
