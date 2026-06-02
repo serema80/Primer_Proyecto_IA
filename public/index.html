@@ -132,13 +132,13 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* Group card */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; animation: fadeIn .2s ease; overflow: hidden; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; animation: fadeIn .2s ease; overflow: visible; min-height: 80px; }
 .card.drag-over { border-color: var(--accent2); }
 
 /* Card header */
-.card-hdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); user-select: none; background: var(--surface); }
+.card-hdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); user-select: none; background: var(--surface); min-height: 48px; }
 .card-hdr:hover { background: rgba(255,255,255,.02); }
-.c-dot { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+.c-dot { width: 3px; min-height: 36px; height: 36px; border-radius: 2px; flex-shrink: 0; display: block; }
 .c-info { flex: 1; min-width: 0; }
 .c-route { font-family: var(--sans); font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-route.no-route { color: var(--warning); }
@@ -153,7 +153,7 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 
 /* Card meta row — always visible */
 .card-meta { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
-.meta-cell { background: var(--surface2); padding: 8px 14px; }
+.meta-cell { background: var(--surface2); padding: 8px 14px; min-height: 48px; }
 .meta-label { font-family: var(--sans); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; font-weight: 500; }
 .meta-val { font-size: 14px; font-weight: 600; color: var(--text); }
 .meta-val.v-green { color: var(--accent); }
@@ -162,8 +162,8 @@ header { position: sticky; top: 0; z-index: 100; display: flex; align-items: cen
 .meta-val.v-red { color: var(--accent3); }
 
 /* Card body — toggled */
-.card-body { display: none; }
-.card.open .card-body { display: block; }
+.card-body { display: none; min-height: 0; }
+.card.open .card-body { display: block; min-height: 40px; }
 
 /* Cost bar */
 .cost-bar { display: flex; align-items: center; gap: 14px; padding: 11px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
